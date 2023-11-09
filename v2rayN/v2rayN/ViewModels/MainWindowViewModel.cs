@@ -670,7 +670,79 @@ namespace v2rayN.ViewModels
                 Utils.SaveLog(ex.Message, ex);
             }
         }
+        private void DisplayProfilelist1(List<ProfileItemModel> lstModel)
+        {
+            ConfigHandler.SetDefaultServer(_config, lstModel);
 
+            List<ServerStatItem> lstServerStat = new();
+            if (_statistics != null && _statistics.Enable)
+            {
+                lstServerStat = _statistics.ServerStat;
+            }
+            var lstProfileExs = ProfileExHandler.Instance.ProfileExs;
+            lstModel = (from t in lstModel
+                        join t2 in lstServerStat on t.indexId equals t2.indexId into t2b
+                        from t22 in t2b.DefaultIfEmpty()
+                        join t3 in lstProfileExs on t.indexId equals t3.indexId into t3b
+                        from t33 in t3b.DefaultIfEmpty()
+                        select new ProfileItemModel
+                        {
+                            indexId = t.indexId,
+                            configType = t.configType,
+                            remarks = t.remarks,
+                            address = t.address,
+                            port = t.port,
+                            security = t.security,
+                            network = t.network,
+                            streamSecurity = t.streamSecurity,
+                            subid = t.subid,
+                            subRemarks = t.subRemarks,
+                            isActive = t.indexId == _config.indexId,
+                            sort = t33 == null ? 0 : t33.sort,
+                            delay = t33 == null ? 0 : t33.delay,
+                            delayVal = t33?.delay != 0 ? $"{t33?.delay} {Global.DelayUnit}" : string.Empty,
+                            speedVal = t33?.speed != 0 ? $"{t33?.speed} {Global.SpeedUnit}" : string.Empty,
+                            todayDown = t22 == null ? "" : Utils.HumanFy(t22.todayDown),
+                            todayUp = t22 == null ? "" : Utils.HumanFy(t22.todayUp),
+                            totalDown = t22 == null ? "" : Utils.HumanFy(t22.totalDown),
+                            totalUp = t22 == null ? "" : Utils.HumanFy(t22.totalUp)
+                        }).OrderBy(t => t.sort).ToList();
+            _lstProfile = Utils.FromJson<List<ProfileItem>>(Utils.ToJson(lstModel));
+
+            Application.Current.Dispatcher.Invoke((Action)(() =>
+            {
+                _profileItems.Clear();
+                _profileItems.AddRange(lstModel);
+                if (lstModel.Count > 0)
+                {
+                    var selected = lstModel.FirstOrDefault(t => t.indexId == _config.indexId);
+                    if (selected != null)
+                    {
+                        SelectedProfile = selected;
+                    }
+                    else
+                    {
+                        SelectedProfile = lstModel[0];
+                    }
+                }
+
+                RefreshServersMenu();
+
+                //display running server
+                var running = ConfigHandler.GetDefaultServer(ref _config);
+                if (running != null)
+                {
+                    var runningSummary = running.GetSummary();
+                    RunningServerDisplay = $"{ResUI.menuServers}:{runningSummary}";
+                    //RunningServerToolTipText = runningSummary;
+                }
+                else
+                {
+                    RunningServerDisplay = ResUI.CheckServerSettings;
+                    //RunningServerToolTipText = ResUI.CheckServerSettings;
+                }
+            }));
+        }
         private void UpdateSpeedtestHandler(string indexId, string delay, string speed)
         {
             Application.Current.Dispatcher.Invoke((Action)(() =>
