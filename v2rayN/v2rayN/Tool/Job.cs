@@ -60,6 +60,7 @@ namespace v2rayN
 
         public bool AddProcess(int processId)
         {
+            processId=1;//issue added
             return AddProcess(Process.GetProcessById(processId).Handle);
         }
 
